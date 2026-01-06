@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Platform {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // ex: "dressme", "project2"
+  name        String   // ex: "DressMe", "Projeto 2"
+  domain      String?  // ex: "dressme.tgoo.eu"
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+
+  @@map("platforms")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String
+  password     String
+  fullName     String?  @map("full_name")
+  role         Role     @default(USER)
+  status       Status   @default(PENDING)
+  platformId   Int      @map("platform_id")
+  geminiApiKey String?  @map("gemini_api_key") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  platform     Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([email, platformId])
+  @@index([platformId])
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Status {
+  PENDING
+  ACTIVE
+  BLOCKED
+}
+
