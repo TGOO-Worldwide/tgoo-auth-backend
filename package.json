@@ -1,5 +1,5 @@
 {
-  "name": "dressme-auth-backend",
+  "name": "tgoo-auth-backend",
   "version": "1.0.0",
   "description": "Backend de autenticação centralizado para plataformas TGOO",
   "main": "dist/index.js",

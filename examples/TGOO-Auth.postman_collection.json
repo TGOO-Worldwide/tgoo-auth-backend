@@ -1,0 +1,435 @@
+{
+  "info": {
+    "name": "TGOO Auth API",
+    "description": "Coleção completa de endpoints da API de Autenticação TGOO\n\nPara mais informações, consulte: INTEGRATION_GUIDE.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "tgoo-auth-collection-2026",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://auth.tgoo.eu/api",
+      "type": "string"
+    },
+    {
+      "key": "platformCode",
+      "value": "dressme",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔓 Públicos (Sem Autenticação)",
+      "item": [
+        {
+          "name": "Listar Plataformas",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "platforms"]
+            },
+            "description": "Lista todas as plataformas ativas disponíveis no sistema."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar Conta (Signup)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Salvar dados do usuário criado",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "    console.log('✅ Conta criada com sucesso!');",
+                  "    console.log('Status:', jsonData.user.status);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teste@example.com\",\n  \"password\": \"senha123\",\n  \"fullName\": \"Usuário Teste\",\n  \"platform\": \"{{platformCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "signup"]
+            },
+            "description": "Cria uma nova conta de usuário.\n\n⚠️ Conta começa com status PENDING e precisa ser aprovada por um ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Salvar token automaticamente",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', jsonData.token);",
+                  "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "    pm.collectionVariables.set('userEmail', jsonData.user.email);",
+                  "    pm.collectionVariables.set('userRole', jsonData.user.role);",
+                  "    console.log('✅ Login bem-sucedido!');",
+                  "    console.log('Token salvo automaticamente');",
+                  "    console.log('Usuário:', jsonData.user.email);",
+                  "    console.log('Role:', jsonData.user.role);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tgoo.eu\",\n  \"password\": \"Senha@123\",\n  \"platform\": \"{{platformCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Realiza login e retorna token JWT.\n\n✅ O token é salvo automaticamente na variável {{authToken}}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔐 Autenticados (USER)",
+      "item": [
+        {
+          "name": "Obter Perfil",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Retorna informações do usuário autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Alterar Senha",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"senha_antiga\",\n  \"newPassword\": \"senha_nova\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/password/change",
+              "host": ["{{baseUrl}}"],
+              "path": ["password", "change"]
+            },
+            "description": "Altera a senha do usuário autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Obter Chave API Gemini",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-key/gemini",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-key", "gemini"]
+            },
+            "description": "Retorna a chave API do Gemini salva para o usuário."
+          },
+          "response": []
+        },
+        {
+          "name": "Salvar Chave API Gemini",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"geminiApiKey\": \"sua_chave_api_aqui\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api-key/gemini",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-key", "gemini"]
+            },
+            "description": "Salva ou atualiza a chave API do Gemini para o usuário."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👑 Admin (ADMIN e SUPER_ADMIN)",
+      "item": [
+        {
+          "name": "Listar Usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?platform={{platformCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [
+                {
+                  "key": "platform",
+                  "value": "{{platformCode}}",
+                  "description": "Código da plataforma (opcional)"
+                }
+              ]
+            },
+            "description": "Lista usuários.\n\n- ADMIN: Vê apenas usuários de sua plataforma\n- SUPER_ADMIN: Vê usuários de todas as plataformas (use query param `platform` para filtrar)"
+          },
+          "response": []
+        },
+        {
+          "name": "Criar Usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"novo@example.com\",\n  \"password\": \"senha123\",\n  \"fullName\": \"Novo Usuário\",\n  \"role\": \"USER\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "Cria um novo usuário.\n\n- ADMIN: Cria usuário em sua plataforma\n- SUPER_ADMIN: Pode especificar `platform` no body"
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar Usuário",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "ID do usuário"
+                }
+              ]
+            },
+            "description": "Atualiza role e/ou status de um usuário.\n\n⚠️ ADMIN não pode promover para SUPER_ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Resetar Senha do Usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":userId", "reset-password"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "ID do usuário"
+                }
+              ]
+            },
+            "description": "Reseta a senha do usuário para uma senha gerada automaticamente.\n\nRetorna a nova senha na resposta."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "👑👑 Super Admin (SUPER_ADMIN apenas)",
+      "item": [
+        {
+          "name": "Listar Plataformas (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "platforms"]
+            },
+            "description": "Lista todas as plataformas (incluindo inativas).\n\n⚠️ Apenas SUPER_ADMIN"
+          },
+          "response": []
+        },
+        {
+          "name": "Criar Plataforma",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"novaplataforma\",\n  \"name\": \"Nova Plataforma\",\n  \"domain\": \"novaplataforma.tgoo.eu\",\n  \"description\": \"Descrição da nova plataforma\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "platforms"]
+            },
+            "description": "Cria uma nova plataforma.\n\n⚠️ Apenas SUPER_ADMIN"
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar Plataforma",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nome Atualizado\",\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/platforms/:platformId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "platforms", ":platformId"],
+              "variable": [
+                {
+                  "key": "platformId",
+                  "value": "1",
+                  "description": "ID da plataforma"
+                }
+              ]
+            },
+            "description": "Atualiza informações de uma plataforma.\n\n⚠️ Apenas SUPER_ADMIN"
+          },
+          "response": []
+        },
+        {
+          "name": "Criar Usuário em Plataforma Específica",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin.proj2@example.com\",\n  \"password\": \"senha123\",\n  \"fullName\": \"Admin Projeto 2\",\n  \"role\": \"ADMIN\",\n  \"status\": \"ACTIVE\",\n  \"platform\": \"projeto2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "SUPER_ADMIN pode criar usuário em qualquer plataforma especificando o campo `platform`."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+

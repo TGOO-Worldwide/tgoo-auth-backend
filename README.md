@@ -1,6 +1,17 @@
-# 🔐 DressMe Auth Backend
+# 🔐 TGOO Auth Backend
 
 Backend de autenticação centralizado para todas as plataformas TGOO.
+
+## 🚀 Para Desenvolvedores
+
+**Quer integrar sua aplicação?** Consulte o [📖 Guia de Integração](./INTEGRATION_GUIDE.md)
+
+Exemplos práticos disponíveis em [`/examples`](./examples/):
+- ⚛️ React + TypeScript
+- 🟢 Vue 3 + Composition API
+- 🐍 Python
+- 🔧 cURL / Shell Script
+- 📮 Postman Collection
 
 ## 🚀 Stack
 
@@ -63,8 +74,23 @@ npm run dev
 
 ## 📖 Documentação
 
-- [Arquitetura Multi-Plataforma](./MULTI_PLATFORM_AUTH.md)
-- [Deploy](./DEPLOYMENT.md)
+### 🚀 Começando
+- [⚡ Quick Start](./QUICKSTART.md) - **Comece em 5 minutos!**
+- [🔌 Guia de Integração Completo](./INTEGRATION_GUIDE.md) - **Documentação detalhada**
+- [📋 Resumo da Documentação](./INTEGRATION_SUMMARY.md) - Visão geral de todos os recursos
+
+### 🏗️ Arquitetura e Deploy
+- [🏢 Arquitetura Multi-Plataforma](./MULTI_PLATFORM_AUTH.md)
+- [🚀 Deploy](./DEPLOYMENT.md)
+
+### 💻 Exemplos Práticos
+Todos os exemplos estão em [`/examples`](./examples/):
+- ⚛️ [React + TypeScript](./examples/quickstart-react.tsx)
+- 🟢 [Vue 3 + Composition API](./examples/quickstart-vue.js)
+- 🐍 [Python](./examples/quickstart-python.py)
+- 🔧 [cURL / Shell Script](./examples/quickstart-curl.sh)
+- 📮 [Postman Collection](./examples/TGOO-Auth.postman_collection.json)
+- 📖 [README dos Exemplos](./examples/README.md)
 
 ## 🌐 Deploy
 
