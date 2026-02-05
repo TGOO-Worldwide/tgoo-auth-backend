@@ -1,0 +1,64 @@
+name: 🧪 CI - Testes e Validação
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  push:
+    branches:
+      - develop
+
+jobs:
+  validate:
+    name: Validar Build e Código
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout do Código
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📥 Instalar Dependências
+        run: npm ci
+      
+      - name: 🔍 Verificar Prisma Schema
+        run: npx prisma validate
+      
+      - name: 🔨 Gerar Prisma Client
+        run: npx prisma generate
+      
+      - name: 🏗️ Build do Projeto
+        run: npm run build
+      
+      - name: ✅ Verificar Build
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Erro: Pasta dist não foi gerada!"
+            exit 1
+          fi
+          if [ ! -f "dist/index.js" ]; then
+            echo "❌ Erro: index.js não foi gerado!"
+            exit 1
+          fi
+          echo "✅ Build validado com sucesso!"
+      
+      - name: 📊 Relatório de Tamanho do Build
+        run: |
+          echo "📦 Tamanho do build:"
+          du -sh dist/
+          echo ""
+          echo "📁 Arquivos gerados:"
+          find dist -type f | wc -l
+      
+      - name: ✅ Sucesso
+        if: success()
+        run: |
+          echo "✅ Validação concluída com sucesso!"
+          echo "O código está pronto para merge/deploy"

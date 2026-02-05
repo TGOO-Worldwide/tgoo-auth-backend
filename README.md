@@ -127,7 +127,11 @@ Veja mais detalhes em [scripts/README.md](./scripts/README.md)
 ### 🏗️ Arquitetura e Deploy
 - [👑 Sistema de Plataforma Master](./MASTER_PLATFORM.md) - **SUPER_ADMIN Universal**
 - [🏢 Arquitetura Multi-Plataforma](./MULTI_PLATFORM_AUTH.md)
-- [🚀 Deploy](./DEPLOYMENT.md)
+- [⚡ Deploy Automático (Quickstart)](./DEPLOY_QUICKSTART.md) - **GitHub Actions (5 min)**
+- [📖 Deploy Automático (Completo)](./GITHUB_ACTIONS_SETUP.md) - **Guia detalhado**
+- [✅ Checklist de Deploy](./.github/DEPLOY_CHECKLIST.md) - **Verificar configuração**
+- [🚀 Deploy Manual](./DEPLOYMENT.md) - **Cloud Panel**
+- [🔐 Variáveis de Ambiente](./ENV_VARIABLES.md) - **Configuração completa**
 
 ### 📝 Scripts e Administração
 - [Scripts de Administração](./scripts/README.md) - Criação de usuários e configuração
@@ -143,7 +147,27 @@ Todos os exemplos estão em [`/examples`](./examples/):
 
 ## 🌐 Deploy
 
-Hospedar em domínio dedicado: `auth.tgoo.eu` ou `api.tgoo.eu`
+### Deploy Automático com GitHub Actions
+
+Este projeto está configurado com deploy automático via GitHub Actions + SSH:
+
+- ⚡ [Guia Rápido (5 min)](./DEPLOY_QUICKSTART.md) - Começar agora!
+- 📖 [Documentação Completa](./GITHUB_ACTIONS_SETUP.md) - Setup detalhado
+- ✅ [Checklist de Configuração](./.github/DEPLOY_CHECKLIST.md) - Verificar tudo
+
+**Como funciona:**
+1. 🔨 Push para `main/master` → Deploy automático inicia
+2. 🚀 GitHub Actions faz build e conecta via SSH
+3. 🔄 Atualiza código, executa migrations e reinicia PM2
+4. ✅ Aplicação atualizada em produção!
+
+### Deploy Manual
+
+Se preferir deploy manual, veja:
+- 📘 [DEPLOYMENT.md](./DEPLOYMENT.md) - Guia de deploy para Cloud Panel
+- 🔧 Script: `./deploy.sh` - Deploy manual no servidor
+
+**Hospedar em:** `auth.tgoo.eu` ou `api.tgoo.eu`
 
 ## 📞 Suporte
 

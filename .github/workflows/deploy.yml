@@ -1,0 +1,129 @@
+name: 🚀 Deploy Automático via SSH
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy para Cloud Panel
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Checkout do Código
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📥 Instalar Dependências
+        run: npm ci
+      
+      - name: 🏗️ Build do Projeto
+        run: npm run build
+        
+      - name: 🔍 Verificar Build
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Erro: Pasta dist não foi gerada!"
+            exit 1
+          fi
+          echo "✅ Build gerado com sucesso!"
+      
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            echo "🚀 Iniciando deploy do tgoo-auth-backend..."
+            
+            # Definir diretório do projeto
+            PROJECT_DIR="${{ secrets.PROJECT_PATH }}"
+            
+            # Verificar se o diretório existe
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "❌ Erro: Diretório $PROJECT_DIR não encontrado!"
+              exit 1
+            fi
+            
+            # Navegar para o diretório
+            cd "$PROJECT_DIR"
+            
+            # Backup do .env
+            if [ -f .env ]; then
+              cp .env .env.backup
+              echo "✅ Backup do .env criado"
+            fi
+            
+            # Atualizar código do repositório
+            echo "📦 Atualizando código..."
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            
+            # Restaurar .env
+            if [ -f .env.backup ]; then
+              mv .env.backup .env
+              echo "✅ .env restaurado"
+            fi
+            
+            # Instalar dependências
+            echo "📥 Instalando dependências..."
+            npm ci --production
+            
+            # Gerar Prisma Client
+            echo "🔧 Gerando Prisma Client..."
+            npx prisma generate
+            
+            # Executar migrations
+            echo "🗃️ Executando migrations do banco de dados..."
+            npx prisma migrate deploy
+            
+            # Build do projeto
+            echo "🏗️ Fazendo build..."
+            npm run build
+            
+            # Verificar se PM2 está instalado
+            if ! command -v pm2 &> /dev/null; then
+              echo "⚠️ PM2 não encontrado, instalando..."
+              npm install -g pm2
+            fi
+            
+            # Reiniciar aplicação com PM2
+            echo "🔄 Reiniciando aplicação..."
+            if pm2 list | grep -q "tgoo-auth-backend"; then
+              pm2 restart tgoo-auth-backend
+              echo "✅ Aplicação reiniciada"
+            else
+              pm2 start ecosystem.config.js
+              pm2 save
+              echo "✅ Aplicação iniciada"
+            fi
+            
+            # Mostrar status
+            echo "📊 Status da aplicação:"
+            pm2 status tgoo-auth-backend
+            
+            echo "🎉 Deploy concluído com sucesso!"
+      
+      - name: ✅ Notificação de Sucesso
+        if: success()
+        run: |
+          echo "✅ Deploy realizado com sucesso!"
+          echo "📝 Branch: ${{ github.ref_name }}"
+          echo "📦 Commit: ${{ github.sha }}"
+          echo "👤 Por: ${{ github.actor }}"
+      
+      - name: ❌ Notificação de Falha
+        if: failure()
+        run: |
+          echo "❌ Deploy falhou!"
+          echo "🔍 Verifique os logs acima para mais detalhes"
