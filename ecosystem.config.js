@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'dressme-backend',
+    name: 'tgoo-auth-backend',
     script: './dist/index.js',
     cwd: './backend',
     instances: 1,
