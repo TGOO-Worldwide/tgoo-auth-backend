@@ -75,9 +75,9 @@ jobs:
               echo "✅ .env restaurado"
             fi
             
-            # Instalar dependências
+            # Instalar dependências (incluindo devDependencies para o build)
             echo "📥 Instalando dependências..."
-            npm ci --production
+            npm ci
             
             # Gerar Prisma Client
             echo "🔧 Gerando Prisma Client..."

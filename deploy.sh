@@ -74,7 +74,7 @@ fi
 
 # Instalar dependências
 print_info "Instalando dependências..."
-npm ci --production
+npm ci
 print_success "Dependências instaladas"
 
 # Gerar Prisma Client

@@ -18,6 +18,10 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:3000',
   'http://localhost:4173',
+  'https://dressme-app.tgoo.eu',
+  'https://siliviat.tgoo.eu',
+  'https://plataforma.tgoo.eu',
+  'https://socialcash-app.tgoo.eu',
   process.env.FRONTEND_URL || ''
 ].filter(origin => origin !== '');
 
