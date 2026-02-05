@@ -15,6 +15,9 @@ router.get('/users', async (req: Request, res: Response) => {
   try {
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
     const platformFilter = req.query.platform as string | undefined;
+    const searchFilter = req.query.search as string | undefined;
+    const roleFilter = req.query.role as string | undefined;
+    const statusFilter = req.query.status as string | undefined;
 
     // Construir filtro de plataforma
     const whereClause: any = {};
@@ -33,6 +36,38 @@ router.get('/users', async (req: Request, res: Response) => {
     } else {
       // ADMIN vê apenas usuários de sua plataforma
       whereClause.platformId = req.user?.platformId;
+    }
+
+    // Filtro de busca por email ou nome
+    if (searchFilter) {
+      whereClause.OR = [
+        { email: { contains: searchFilter } },
+        { fullName: { contains: searchFilter } }
+      ];
+    }
+
+    // Filtro por role
+    if (roleFilter) {
+      const validRoles = ['USER', 'ADMIN', 'SUPER_ADMIN'];
+      if (validRoles.includes(roleFilter.toUpperCase())) {
+        whereClause.role = roleFilter.toUpperCase();
+      } else {
+        return res.status(400).json({ 
+          error: 'Role inválida. Use: USER, ADMIN ou SUPER_ADMIN' 
+        });
+      }
+    }
+
+    // Filtro por status
+    if (statusFilter) {
+      const validStatuses = ['PENDING', 'ACTIVE', 'BLOCKED'];
+      if (validStatuses.includes(statusFilter.toUpperCase())) {
+        whereClause.status = statusFilter.toUpperCase();
+      } else {
+        return res.status(400).json({ 
+          error: 'Status inválido. Use: PENDING, ACTIVE ou BLOCKED' 
+        });
+      }
     }
 
     const users = await prisma.user.findMany({
@@ -304,6 +339,56 @@ router.post('/users/:id/reset-password', async (req: Request, res: Response) => 
   } catch (error) {
     console.error('Erro ao resetar senha:', error);
     res.status(500).json({ error: 'Erro ao resetar senha' });
+  }
+});
+
+// Excluir usuário (Admin)
+router.delete('/users/:id', async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+
+    // Verificar se usuário existe
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { platform: true }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Não pode deletar a própria conta
+    if (req.user?.id === userId) {
+      return res.status(400).json({ error: 'Você não pode excluir sua própria conta' });
+    }
+
+    // ADMIN só pode deletar usuários de sua plataforma
+    if (!isSuperAdmin && existingUser.platformId !== req.user?.platformId) {
+      return res.status(403).json({ error: 'Você não pode excluir usuários de outra plataforma' });
+    }
+
+    // ADMIN não pode deletar SUPER_ADMIN
+    if (!isSuperAdmin && existingUser.role === 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Apenas SUPER_ADMIN pode excluir outros SUPER_ADMIN' });
+    }
+
+    // Deletar usuário permanentemente
+    await prisma.user.delete({
+      where: { id: userId }
+    });
+
+    res.json({ 
+      message: 'Usuário excluído com sucesso',
+      deletedUser: {
+        id: existingUser.id,
+        email: existingUser.email,
+        platform: existingUser.platform.code
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
+    res.status(500).json({ error: 'Erro ao excluir usuário' });
   }
 });
 

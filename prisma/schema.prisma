@@ -18,6 +18,7 @@ model Platform {
   domain      String?  // ex: "dressme.tgoo.eu"
   description String?  @db.Text
   isActive    Boolean  @default(true) @map("is_active")
+  isMaster    Boolean  @default(false) @map("is_master") // Plataforma principal que gerencia SUPER_ADMIN
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

@@ -93,6 +93,37 @@ chmod +x quickstart-curl.sh
 
 ---
 
+### 👑 SUPER_ADMIN Universal
+**Arquivo:** `super-admin-example.sh`
+
+Demonstração do sistema de Plataforma Master e acesso universal do SUPER_ADMIN:
+- ✅ Login do SUPER_ADMIN na plataforma master
+- ✅ Acesso universal a outras plataformas
+- ✅ Decodificação do token JWT
+- ✅ Demonstração de permissões administrativas
+
+**Uso:**
+```bash
+# 1. Configurar plataforma master primeiro
+cd ..
+node scripts/setup-master-platform.js
+
+# 2. Executar demonstração
+cd examples
+chmod +x super-admin-example.sh
+./super-admin-example.sh
+```
+
+**O que demonstra:**
+- Como SUPER_ADMIN pode autenticar em qualquer plataforma
+- Estrutura do token JWT com `isSuperAdminAccess: true`
+- Diferenças entre autenticação normal e SUPER_ADMIN
+- Gerenciamento de usuários cross-platform
+
+📖 **Mais informações:** [MASTER_PLATFORM.md](../MASTER_PLATFORM.md)
+
+---
+
 ## 🎯 Guia Completo
 
 Para documentação detalhada com mais linguagens, casos de uso especiais e melhores práticas, consulte:

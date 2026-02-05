@@ -1318,10 +1318,34 @@ Salvar/atualizar chave API do Gemini.
 ### Endpoints Admin (ADMIN ou SUPER_ADMIN)
 
 #### `GET /api/admin/users`
-Listar usuários.
+Listar usuários com filtros opcionais.
 
 **Query Parameters:**
-- `platform` (opcional): Código da plataforma (ADMIN só vê sua plataforma)
+- `platform` (opcional): Código da plataforma (apenas SUPER_ADMIN pode filtrar por plataforma diferente da sua)
+- `search` (opcional): Busca por email ou nome completo (parcial, case-insensitive)
+- `role` (opcional): Filtrar por role (`USER`, `ADMIN`, `SUPER_ADMIN`)
+- `status` (opcional): Filtrar por status (`PENDING`, `ACTIVE`, `BLOCKED`)
+
+**Exemplos de Uso:**
+```bash
+# Listar todos os usuários (ADMIN vê apenas da sua plataforma)
+GET /api/admin/users
+
+# Buscar usuários por email ou nome
+GET /api/admin/users?search=maria
+
+# Filtrar por role
+GET /api/admin/users?role=ADMIN
+
+# Filtrar por status
+GET /api/admin/users?status=PENDING
+
+# Combinar filtros
+GET /api/admin/users?status=ACTIVE&role=USER&search=john
+
+# SUPER_ADMIN: filtrar por plataforma específica
+GET /api/admin/users?platform=dressme&status=PENDING
+```
 
 **Response 200:**
 ```json
@@ -1333,12 +1357,288 @@ Listar usuários.
     "role": "USER",
     "status": "ACTIVE",
     "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z",
     "platform": {
+      "id": 1,
       "code": "dressme",
       "name": "DressMe"
     }
   }
 ]
+```
+
+**Erros Possíveis:**
+- `400`: Role ou status inválido
+- `401`: Token inválido ou expirado
+- `403`: Usuário não tem permissão de ADMIN
+
+**Exemplo de Integração (TypeScript):**
+
+```typescript
+// Serviço Admin
+interface AdminUserFilters {
+  platform?: string;
+  search?: string;
+  role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  status?: 'PENDING' | 'ACTIVE' | 'BLOCKED';
+}
+
+export const adminService = {
+  async getUsers(filters?: AdminUserFilters) {
+    const params = new URLSearchParams();
+    
+    if (filters?.platform) params.append('platform', filters.platform);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.role) params.append('role', filters.role);
+    if (filters?.status) params.append('status', filters.status);
+    
+    const queryString = params.toString();
+    const url = queryString 
+      ? `/admin/users?${queryString}` 
+      : '/admin/users';
+    
+    const response = await api.get(url);
+    return response.data;
+  },
+};
+
+// Exemplos de uso:
+
+// Listar todos os usuários
+const allUsers = await adminService.getUsers();
+
+// Buscar usuários pendentes
+const pendingUsers = await adminService.getUsers({ status: 'PENDING' });
+
+// Buscar admins ativos
+const activeAdmins = await adminService.getUsers({ 
+  role: 'ADMIN', 
+  status: 'ACTIVE' 
+});
+
+// Buscar usuário por nome/email
+const searchResults = await adminService.getUsers({ 
+  search: 'maria.silva' 
+});
+
+// SUPER_ADMIN: buscar usuários bloqueados de uma plataforma específica
+const blockedUsers = await adminService.getUsers({ 
+  platform: 'dressme', 
+  status: 'BLOCKED' 
+});
+```
+
+**Exemplo Completo - Componente Admin de Gerenciamento de Usuários:**
+
+```typescript
+// src/pages/AdminUsers.tsx
+import React, { useState, useEffect } from 'react';
+import { adminService } from '../services/admin.service';
+
+interface User {
+  id: number;
+  email: string;
+  fullName: string | null;
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  status: 'PENDING' | 'ACTIVE' | 'BLOCKED';
+  platform: {
+    code: string;
+    name: string;
+  };
+}
+
+export const AdminUsers: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    role: '',
+  });
+
+  // Carregar usuários
+  async function loadUsers() {
+    setLoading(true);
+    try {
+      const data = await adminService.getUsers(filters);
+      setUsers(data);
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadUsers();
+  }, [filters]);
+
+  // Aprovar usuário pendente
+  async function handleApprove(userId: number) {
+    try {
+      await adminService.updateUser(userId, { status: 'ACTIVE' });
+      alert('Usuário aprovado com sucesso!');
+      loadUsers();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Erro ao aprovar usuário');
+    }
+  }
+
+  // Bloquear usuário
+  async function handleBlock(userId: number, userEmail: string) {
+    if (!confirm(`Deseja bloquear o usuário ${userEmail}?`)) return;
+    
+    try {
+      await adminService.updateUser(userId, { status: 'BLOCKED' });
+      alert('Usuário bloqueado com sucesso!');
+      loadUsers();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Erro ao bloquear usuário');
+    }
+  }
+
+  // Excluir usuário
+  async function handleDelete(userId: number, userEmail: string) {
+    const confirmed = confirm(
+      `⚠️ ATENÇÃO: Você está prestes a EXCLUIR PERMANENTEMENTE o usuário:\n\n` +
+      `Email: ${userEmail}\n\n` +
+      `Esta ação é IRREVERSÍVEL e removerá:\n` +
+      `• Dados do usuário\n` +
+      `• Histórico de acesso\n` +
+      `• Todas as configurações\n\n` +
+      `💡 ALTERNATIVA: Considere BLOQUEAR o usuário ao invés de excluí-lo.\n\n` +
+      `Deseja realmente EXCLUIR este usuário?`
+    );
+
+    if (!confirmed) return;
+
+    // Segunda confirmação para segurança
+    const finalConfirm = confirm(
+      `⚠️ ÚLTIMA CONFIRMAÇÃO:\n\n` +
+      `Tem CERTEZA ABSOLUTA que deseja excluir ${userEmail}?\n\n` +
+      `Digite "sim" para confirmar.`
+    );
+
+    if (!finalConfirm) return;
+
+    try {
+      await adminService.deleteUser(userId);
+      alert('✅ Usuário excluído com sucesso!');
+      loadUsers();
+    } catch (error: any) {
+      alert('❌ ' + (error.response?.data?.error || 'Erro ao excluir usuário'));
+    }
+  }
+
+  return (
+    <div className="admin-users">
+      <h1>Gerenciar Usuários</h1>
+
+      {/* Filtros */}
+      <div className="filters">
+        <input
+          type="text"
+          placeholder="Buscar por email ou nome..."
+          value={filters.search}
+          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+        />
+        
+        <select
+          value={filters.status}
+          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+        >
+          <option value="">Todos os status</option>
+          <option value="PENDING">Pendentes</option>
+          <option value="ACTIVE">Ativos</option>
+          <option value="BLOCKED">Bloqueados</option>
+        </select>
+
+        <select
+          value={filters.role}
+          onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+        >
+          <option value="">Todas as roles</option>
+          <option value="USER">Usuário</option>
+          <option value="ADMIN">Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+        </select>
+      </div>
+
+      {/* Lista de usuários */}
+      {loading ? (
+        <p>Carregando...</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nome</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Plataforma</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.email}</td>
+                <td>{user.fullName || '-'}</td>
+                <td>{user.role}</td>
+                <td>
+                  <span className={`badge badge-${user.status.toLowerCase()}`}>
+                    {user.status}
+                  </span>
+                </td>
+                <td>{user.platform.name}</td>
+                <td>
+                  {user.status === 'PENDING' && (
+                    <button onClick={() => handleApprove(user.id)}>
+                      Aprovar
+                    </button>
+                  )}
+                  {user.status === 'ACTIVE' && (
+                    <button onClick={() => handleBlock(user.id, user.email)}>
+                      Bloquear
+                    </button>
+                  )}
+                  {user.status === 'BLOCKED' && (
+                    <button onClick={() => handleApprove(user.id)}>
+                      Reativar
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleDelete(user.id, user.email)}
+                    className="btn-danger"
+                  >
+                    🗑️ Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+};
+```
+
+```typescript
+// src/services/admin.service.ts (complemento)
+export const adminService = {
+  // ... outros métodos já documentados acima ...
+  
+  async updateUser(userId: number, data: { status?: string; role?: string }) {
+    const response = await api.patch(`/admin/users/${userId}`, data);
+    return response.data;
+  },
+  
+  async deleteUser(userId: number) {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
+};
 ```
 
 #### `POST /api/admin/users`
@@ -1381,11 +1681,112 @@ Atualizar usuário.
 #### `POST /api/admin/users/:id/reset-password`
 Resetar senha do usuário.
 
+**Request Body:**
+```json
+{
+  "newPassword": "nova_senha_123"
+}
+```
+
 **Response 200:**
 ```json
 {
-  "message": "Senha resetada com sucesso",
-  "newPassword": "nova_senha_gerada"
+  "message": "Senha resetada com sucesso"
+}
+```
+
+**Erros Possíveis:**
+- `400`: Nova senha não fornecida ou muito curta (< 6 caracteres)
+- `403`: Tentativa de resetar senha de usuário de outra plataforma (ADMIN)
+- `403`: ADMIN tentando resetar senha de SUPER_ADMIN
+- `404`: Usuário não encontrado
+
+#### `DELETE /api/admin/users/:id`
+Excluir usuário permanentemente do sistema.
+
+⚠️ **ATENÇÃO:** Esta operação é **irreversível**. O usuário será completamente removido do banco de dados. Considere usar `PATCH /api/admin/users/:id` com `status: "BLOCKED"` para desativar o usuário sem excluí-lo.
+
+**Restrições:**
+- ADMIN só pode excluir usuários de sua própria plataforma
+- SUPER_ADMIN pode excluir usuários de qualquer plataforma
+- Não é possível excluir a própria conta
+- ADMIN não pode excluir SUPER_ADMIN (apenas outro SUPER_ADMIN pode)
+
+**Response 200:**
+```json
+{
+  "message": "Usuário excluído com sucesso",
+  "deletedUser": {
+    "id": 5,
+    "email": "usuario@exemplo.com",
+    "platform": "dressme"
+  }
+}
+```
+
+**Erros Possíveis:**
+- `400`: Tentativa de excluir a própria conta
+- `403`: Tentativa de excluir usuário de outra plataforma (ADMIN)
+- `403`: ADMIN tentando excluir SUPER_ADMIN
+- `404`: Usuário não encontrado
+
+**Exemplo de Uso (cURL):**
+```bash
+# Excluir usuário com ID 5
+curl -X DELETE https://auth.tgoo.eu/api/admin/users/5 \
+  -H "Authorization: Bearer SEU_TOKEN_JWT" \
+  -H "Content-Type: application/json"
+```
+
+**Exemplo de Integração (TypeScript):**
+```typescript
+// Serviço Admin
+export const adminService = {
+  async deleteUser(userId: number): Promise<void> {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
+};
+
+// Uso com confirmação
+async function handleDeleteUser(userId: number, userEmail: string) {
+  const confirmed = window.confirm(
+    `Tem certeza que deseja excluir o usuário ${userEmail}?\n\n` +
+    'Esta ação é IRREVERSÍVEL e removerá permanentemente:\n' +
+    '- Dados do usuário\n' +
+    '- Histórico de acesso\n' +
+    '- Todas as configurações\n\n' +
+    'Considere BLOQUEAR o usuário ao invés de excluí-lo.'
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    await adminService.deleteUser(userId);
+    alert('Usuário excluído com sucesso');
+    // Recarregar lista de usuários
+    await loadUsers();
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error || 'Erro ao excluir usuário';
+    alert(errorMsg);
+  }
+}
+```
+
+**Alternativa Recomendada - Bloquear ao Invés de Excluir:**
+```typescript
+// Bloquear usuário (reversível)
+async function handleBlockUser(userId: number) {
+  await api.patch(`/admin/users/${userId}`, {
+    status: 'BLOCKED'
+  });
+}
+
+// Reativar usuário bloqueado
+async function handleUnblockUser(userId: number) {
+  await api.patch(`/admin/users/${userId}`, {
+    status: 'ACTIVE'
+  });
 }
 ```
 
@@ -1436,6 +1837,8 @@ Atualizar plataforma.
 8. **Proteja rotas no frontend** com componentes/HOCs
 9. **Armazene token de forma segura** (localStorage/cookies httpOnly)
 10. **Implemente retry logic** para falhas de rede
+11. **Use filtros no endpoint admin/users** para melhorar performance e UX ao gerenciar usuários
+12. **Prefira BLOQUEAR usuários ao invés de excluí-los** para manter histórico e possibilitar reversão
 
 ### ❌ DON'T (Não Faça)
 
@@ -1449,6 +1852,7 @@ Atualizar plataforma.
 8. **Não compartilhe token entre domínios** sem CORS adequado
 9. **Não implemente refresh automático sem UX adequado**
 10. **Não confie apenas em proteção frontend** - backend deve validar
+11. **Não exclua usuários sem confirmação clara** - implemente diálogos de confirmação com avisos sobre irreversibilidade
 
 ---
 
@@ -1538,6 +1942,42 @@ api.interceptors.request.use((config) => {
 
 ---
 
+### Problema: Não consigo excluir um usuário
+
+**Causa 1:** Tentando excluir a própria conta.
+
+**Solução:** Não é possível excluir a própria conta. Peça a outro administrador para fazer isso.
+
+---
+
+**Causa 2:** ADMIN tentando excluir usuário de outra plataforma ou SUPER_ADMIN.
+
+**Solução:** 
+- ADMIN só pode excluir usuários da mesma plataforma
+- ADMIN não pode excluir SUPER_ADMIN
+- Apenas SUPER_ADMIN pode excluir usuários de qualquer plataforma
+
+---
+
+**Causa 3:** Dúvida entre excluir ou bloquear usuário.
+
+**Solução:** 
+```typescript
+// ✅ RECOMENDADO: Bloquear (reversível)
+await api.patch(`/admin/users/${userId}`, {
+  status: 'BLOCKED'
+});
+
+// ⚠️ Use apenas se necessário: Excluir (irreversível)
+await api.delete(`/admin/users/${userId}`);
+```
+
+**Quando usar cada opção:**
+- **BLOQUEAR**: Usuário violou regras temporariamente, pode precisar reativar depois, quer manter histórico
+- **EXCLUIR**: Conta spam, teste, ou solicitação explícita de exclusão (LGPD/GDPR)
+
+---
+
 ## 📞 Suporte
 
 ### Contatos
@@ -1564,6 +2004,21 @@ Para adicionar sua aplicação ao sistema:
 ---
 
 ## 📄 Changelog
+
+### Versão 1.2.0 (Fevereiro 2026)
+- ✅ **Novo endpoint DELETE /api/admin/users/:id**
+  - Exclusão permanente de usuários
+  - Regras de segurança robustas
+  - Documentação com exemplos e alternativas
+  - Recomendações de uso (bloquear vs excluir)
+
+### Versão 1.1.0 (Fevereiro 2026)
+- ✅ **Filtros avançados no endpoint GET /api/admin/users**
+  - Busca por email ou nome (`search`)
+  - Filtro por role (`role`)
+  - Filtro por status (`status`)
+  - Combinação de múltiplos filtros
+- ✅ Melhorias na experiência de gerenciamento de usuários
 
 ### Versão 1.0.0 (Janeiro 2026)
 - ✅ Sistema multi-plataforma implementado

@@ -1,5 +1,64 @@
 # 📝 Scripts de Administração
 
+## 🔐 Configurar Plataforma Principal (Master)
+
+**IMPORTANTE:** Execute este script PRIMEIRO para configurar a plataforma principal que gerencia os SUPER_ADMIN.
+
+### Script de Configuração Rápida
+
+```bash
+cd backend
+node scripts/setup-master-platform.js
+```
+
+Este script irá:
+
+1. Criar ou atualizar a plataforma principal (master)
+2. Criar o usuário SUPER_ADMIN da plataforma principal
+3. Permitir que o SUPER_ADMIN acesse TODAS as plataformas
+
+**Valores padrão:**
+- Plataforma: `auth_tgoo` (ID: 100 ou próximo disponível)
+- Nome: `TGOO Auth`
+- Email SUPER_ADMIN: `admin@tgoo.eu`
+- Senha SUPER_ADMIN: `Senha@123`
+- Role: `SUPER_ADMIN`
+- Status: `ACTIVE`
+
+**Variáveis de ambiente opcionais:**
+
+```bash
+MASTER_PLATFORM_CODE=auth_tgoo \
+MASTER_PLATFORM_NAME="TGOO Auth" \
+MASTER_ADMIN_EMAIL=admin@tgoo.eu \
+MASTER_ADMIN_PASSWORD=Senha@123 \
+node scripts/setup-master-platform.js
+```
+
+### Como funciona a hierarquia de autenticação:
+
+1. **Plataforma Principal (Master)**: `auth_tgoo` com `isMaster: true`
+2. **SUPER_ADMIN**: Usuário com role `SUPER_ADMIN` na plataforma master
+3. **Autenticação Universal**: O SUPER_ADMIN pode se autenticar em QUALQUER plataforma
+
+**Exemplo de autenticação:**
+
+```bash
+# SUPER_ADMIN autenticando na plataforma "dressme"
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@tgoo.eu",
+    "password": "Senha@123",
+    "platform": "dressme"
+  }'
+```
+
+O sistema irá:
+1. ✓ Verificar se `admin@tgoo.eu` é SUPER_ADMIN da plataforma master
+2. ✓ Se SIM → Aprovar login na plataforma `dressme`
+3. ✗ Se NÃO → Verificar se é usuário da plataforma `dressme`
+
 ## 🎯 Criar Usuários Admin/SUPER_ADMIN
 
 ### Método 1: Via Linha de Comando (Recomendado)

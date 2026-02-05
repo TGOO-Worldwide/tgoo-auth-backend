@@ -103,7 +103,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Plataforma é obrigatória' });
     }
 
-    // Buscar plataforma
+    // Buscar plataforma de destino
     const platformData = await prisma.platform.findUnique({
       where: { code: platform }
     });
@@ -116,47 +116,101 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Plataforma está inativa' });
     }
 
-    // Buscar usuário nesta plataforma
-    const user = await prisma.user.findUnique({
-      where: { 
-        email_platformId: {
-          email,
-          platformId: platformData.id
-        }
-      },
-      include: {
-        platform: true
-      }
+    let user = null;
+    let isSuperAdminAccess = false;
+
+    // PRIMEIRO: Verificar se é SUPER_ADMIN da plataforma principal (master)
+    const masterPlatform = await prisma.platform.findFirst({
+      where: { isMaster: true }
     });
+
+    if (masterPlatform) {
+      // Buscar usuário na plataforma master
+      const superAdminUser = await prisma.user.findUnique({
+        where: { 
+          email_platformId: {
+            email,
+            platformId: masterPlatform.id
+          }
+        },
+        include: {
+          platform: true
+        }
+      });
+
+      // Se é SUPER_ADMIN da plataforma master, pode acessar qualquer plataforma
+      if (superAdminUser && superAdminUser.role === 'SUPER_ADMIN') {
+        // Verificar senha
+        const validPassword = await bcrypt.compare(password, superAdminUser.password);
+
+        if (validPassword) {
+          // Verificar se conta está ativa
+          if (superAdminUser.status === 'BLOCKED') {
+            return res.status(403).json({ error: 'Conta bloqueada. Entre em contato com o administrador.' });
+          }
+
+          if (superAdminUser.status === 'PENDING') {
+            return res.status(403).json({ error: 'Conta pendente de aprovação. Aguarde o administrador ativar sua conta.' });
+          }
+
+          user = superAdminUser;
+          isSuperAdminAccess = true;
+        }
+      }
+    }
+
+    // SEGUNDO: Se não é SUPER_ADMIN, verificar se é usuário da plataforma de origem
+    if (!user) {
+      const regularUser = await prisma.user.findUnique({
+        where: { 
+          email_platformId: {
+            email,
+            platformId: platformData.id
+          }
+        },
+        include: {
+          platform: true
+        }
+      });
+
+      if (!regularUser) {
+        return res.status(401).json({ error: 'Credenciais inválidas' });
+      }
+
+      // Verificar senha
+      const validPassword = await bcrypt.compare(password, regularUser.password);
+
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Credenciais inválidas' });
+      }
+
+      // Verificar se conta está ativa
+      if (regularUser.status === 'BLOCKED') {
+        return res.status(403).json({ error: 'Conta bloqueada. Entre em contato com o administrador.' });
+      }
+
+      if (regularUser.status === 'PENDING') {
+        return res.status(403).json({ error: 'Conta pendente de aprovação. Aguarde o administrador ativar sua conta.' });
+      }
+
+      user = regularUser;
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    // Verificar senha
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-
-    // Verificar se conta está ativa
-    if (user.status === 'BLOCKED') {
-      return res.status(403).json({ error: 'Conta bloqueada. Entre em contato com o administrador.' });
-    }
-
-    if (user.status === 'PENDING') {
-      return res.status(403).json({ error: 'Conta pendente de aprovação. Aguarde o administrador ativar sua conta.' });
-    }
-
-    // Gerar token JWT (incluindo platformId)
+    // Gerar token JWT
+    // Se é SUPER_ADMIN acessando outra plataforma, incluir informação da plataforma de destino
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
         role: user.role,
         platformId: user.platformId,
-        platform: user.platform.code
+        platform: user.platform.code,
+        targetPlatform: isSuperAdminAccess ? platform : user.platform.code,
+        isSuperAdminAccess
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -174,7 +228,15 @@ router.post('/login', async (req: Request, res: Response) => {
           id: user.platform.id,
           code: user.platform.code,
           name: user.platform.name
-        }
+        },
+        // Se é SUPER_ADMIN acessando outra plataforma, incluir informação
+        ...(isSuperAdminAccess && {
+          accessingPlatform: {
+            id: platformData.id,
+            code: platformData.code,
+            name: platformData.name
+          }
+        })
       }
     });
   } catch (error) {
